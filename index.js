@@ -39,7 +39,7 @@ app.post("/ask", async (req, res) => {
     const response = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
-        model: "gpt-4o", // gerekirse gpt-3.5-turbo olarak değiştir
+        model: "gpt-3.5-turbo", // gerekirse gpt-3.5-turbo olarak değiştir
         messages: [
           { role: "system", content: "Sen Robocombo.com için müşteri destek chatbotusun." },
           { role: "user", content: userMessage }
