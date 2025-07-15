@@ -9,7 +9,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Ana test sayfası
 app.get("/", (req, res) => {
+  res.send("✅ Robocombo GPT sunucusu başarıyla çalışıyor!");
+});
+
+// GPT modellerini listele
 app.get("/models", async (req, res) => {
   try {
     const response = await axios.get("https://api.openai.com/v1/models", {
@@ -26,9 +31,7 @@ app.get("/models", async (req, res) => {
   }
 });
 
-  res.send("✅ Robocombo GPT sunucusu başarıyla çalışıyor!");
-});
-
+// GPT-4 üzerinden kullanıcı mesajı yanıtlama
 app.post("/ask", async (req, res) => {
   const userMessage = req.body.message;
 
@@ -36,7 +39,7 @@ app.post("/ask", async (req, res) => {
     const response = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
-        model: "gpt-4",
+        model: "gpt-4", // gerekirse gpt-3.5-turbo olarak değiştir
         messages: [
           { role: "system", content: "Sen Robocombo.com için müşteri destek chatbotusun." },
           { role: "user", content: userMessage }
