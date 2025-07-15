@@ -10,6 +10,22 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
+app.get("/models", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.openai.com/v1/models", {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+      }
+    });
+
+    const modelNames = response.data.data.map(m => m.id);
+    res.send(modelNames.filter(name => name.includes("gpt")));
+  } catch (error) {
+    console.error("Model çekme hatası:", error.message);
+    res.status(500).send("Model listesi alınamadı.");
+  }
+});
+
   res.send("✅ Robocombo GPT sunucusu başarıyla çalışıyor!");
 });
 
