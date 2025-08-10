@@ -8,12 +8,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Ana sayfa
+// Ana sayfa (health check)
 app.get("/", (req, res) => {
   res.send("✅ Robocombo GPT sunucusu başarıyla çalışıyor!");
 });
 
-// Test sayfası (/test)
+// Hızlı test sayfası (/test)
 app.get("/test", (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -50,7 +50,7 @@ app.get("/test", (req, res) => {
   `);
 });
 
-// Modelleri listele
+// (Opsiyonel) erişimin olan GPT modellerini görmek için
 app.get("/models", async (req, res) => {
   try {
     const response = await axios.get("https://api.openai.com/v1/models", {
@@ -64,17 +64,20 @@ app.get("/models", async (req, res) => {
   }
 });
 
-// Ask endpoint
+// ---- /ask: retry + fallback + ayrıntılı hata çıktısı ----
 app.post("/ask", async (req, res) => {
   const userMessage = (req.body && req.body.message) ? String(req.body.message) : "";
   if (!userMessage) {
     return res.status(400).send("Mesaj boş olamaz.");
   }
 
+  // Erişimin olan modellerden hızlı → güçlü → geniş fallback sırası
   const candidateModels = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"];
-  const maxAttempts = 3;
-  const baseDelayMs = 800;
+
+  const maxAttempts = 3;           // her model için deneme sayısı
+  const baseDelayMs = 800;         // exponential backoff başlangıç bekleme
   const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
   let lastError = null;
 
   for (const model of candidateModels) {
@@ -107,13 +110,15 @@ app.post("/ask", async (req, res) => {
         }
         return res.send(reply);
       } catch (error) {
-        const status = error?.response?.status;
+        const status = error?.response?.status || "n/a";
         const data = error?.response?.data;
-        console.error(`[ASK][ERROR] model=${model} attempt=${attempt} status=${status || "n/a"}`);
+        console.error(`[ASK][ERROR] model=${model} attempt=${attempt} status=${status} message=${error?.message}`);
         if (data) console.error("[ASK][ERROR][DATA]:", JSON.stringify(data));
+
         lastError = error;
 
-        if (status === 429 || (status >= 500 && status <= 599)) {
+        // 429 veya 5xx ise backoff ile tekrar dene; diğer hatalarda model değiştir
+        if (status === 429 || (typeof status === "number" && status >= 500 && status <= 599)) {
           const delay = baseDelayMs * Math.pow(2, attempt - 1);
           console.warn(`[ASK] Rate limit/5xx - ${delay}ms bekleniyor ve tekrar denenecek...`);
           await wait(delay);
@@ -126,9 +131,19 @@ app.post("/ask", async (req, res) => {
     }
   }
 
-  console.error("[ASK] Tüm denemeler başarısız. Son hata:", lastError?.message);
-  return res.status(500).send("GPT yanıtı alınamadı.");
+  // Geçici debug: istemciye ayrıntılı hata dön (canlıda sadeleştiririz)
+  const status = lastError?.response?.status || 500;
+  const data = lastError?.response?.data;
+  return res.status(status).send(
+    JSON.stringify({
+      error: "OpenAI isteği başarısız",
+      status,
+      message: lastError?.message,
+      data
+    })
+  );
 });
+// ---------------------------------------------------------
 
 app.listen(PORT, () => {
   console.log(`🚀 Sunucu ${PORT} portunda çalışıyor`);
