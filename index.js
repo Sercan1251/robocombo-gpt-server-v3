@@ -8,12 +8,49 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Ana test sayfası
+// Ana sayfa
 app.get("/", (req, res) => {
   res.send("✅ Robocombo GPT sunucusu başarıyla çalışıyor!");
 });
 
-// (Opsiyonel) Modelleri listele
+// Test sayfası (/test)
+app.get("/test", (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head><meta charset="UTF-8"><title>Robocombo GPT Test</title></head>
+    <body>
+      <h2>Robocombo GPT Test</h2>
+      <form id="chat-form">
+        <input type="text" id="message" placeholder="Mesajınızı yazın..." size="50" />
+        <button type="submit">Gönder</button>
+      </form>
+      <p><strong>Yanıt:</strong> <span id="response"></span></p>
+      <script>
+        document.getElementById("chat-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const message = document.getElementById("message").value;
+          const el = document.getElementById("response");
+          el.textContent = "Gönderiliyor...";
+          try {
+            const r = await fetch("/ask", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({ message })
+            });
+            const text = await r.text();
+            el.textContent = text;
+          } catch (err) {
+            el.textContent = "Hata: " + err.message;
+          }
+        });
+      </script>
+    </body>
+    </html>
+  `);
+});
+
+// Modelleri listele
 app.get("/models", async (req, res) => {
   try {
     const response = await axios.get("https://api.openai.com/v1/models", {
@@ -27,20 +64,17 @@ app.get("/models", async (req, res) => {
   }
 });
 
-// ---- /ask (tamamen değiştirilmiş sürüm) ----
+// Ask endpoint
 app.post("/ask", async (req, res) => {
   const userMessage = (req.body && req.body.message) ? String(req.body.message) : "";
   if (!userMessage) {
     return res.status(400).send("Mesaj boş olamaz.");
   }
 
-  // Önce hızlı/ucuz model, sonra daha güçlü, sonra 3.5 fallback
   const candidateModels = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"];
-
-  const maxAttempts = 3;       // her model için kaç tekrar
-  const baseDelayMs = 800;     // backoff başlangıç bekleme
+  const maxAttempts = 3;
+  const baseDelayMs = 800;
   const wait = (ms) => new Promise(r => setTimeout(r, ms));
-
   let lastError = null;
 
   for (const model of candidateModels) {
@@ -79,7 +113,6 @@ app.post("/ask", async (req, res) => {
         if (data) console.error("[ASK][ERROR][DATA]:", JSON.stringify(data));
         lastError = error;
 
-        // 429/5xx ise backoff ile tekrar dene; diğerlerinde bir sonraki modele geç
         if (status === 429 || (status >= 500 && status <= 599)) {
           const delay = baseDelayMs * Math.pow(2, attempt - 1);
           console.warn(`[ASK] Rate limit/5xx - ${delay}ms bekleniyor ve tekrar denenecek...`);
@@ -96,7 +129,6 @@ app.post("/ask", async (req, res) => {
   console.error("[ASK] Tüm denemeler başarısız. Son hata:", lastError?.message);
   return res.status(500).send("GPT yanıtı alınamadı.");
 });
-// --------------------------------------------
 
 app.listen(PORT, () => {
   console.log(`🚀 Sunucu ${PORT} portunda çalışıyor`);
