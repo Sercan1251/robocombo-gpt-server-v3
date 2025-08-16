@@ -2,13 +2,13 @@
   "name": "robocombo-gpt-server-v3",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "scripts": { "start": "node index.js" },
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "axios": "^1.6.7",
-  "dotenv": "^16.3.1"
+    "papaparse": "^5.4.1",
+    "uuid": "^9.0.1",
+    "fast-xml-parser": "^4.4.0"
   }
 }

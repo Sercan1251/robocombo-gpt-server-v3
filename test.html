@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Robocombo GPT Test</title>
+</head>
+<body>
+  <h2>Robocombo GPT Test Formu</h2>
+  <form id="chatForm">
+    <input type="text" id="message" placeholder="Mesajınızı yazın" required />
+    <button type="submit">Gönder</button>
+  </form>
+  <h3>Yanıt:</h3>
+  <pre id="response"></pre>
+
+  <script>
+    document.getElementById("chatForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = document.getElementById("message").value;
+
+      try {
+        const res = await fetch("https://robocombo-gpt-server-v3.onrender.com/ask", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await res.text();
+        document.getElementById("response").innerText = data;
+      } catch (error) {
+        document.getElementById("response").innerText = "Hata: " + error.message;
+      }
+    });
+  </script>
+</body>
+</html>
